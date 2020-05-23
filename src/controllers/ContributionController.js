@@ -1,33 +1,29 @@
 const connection = require("../database/connection");
 const fs = require('fs');
 
-module.exports = {
+module.exports = {    
     async insertContribution(request, response){
         const user = request.headers.authorization; // Apenas para teste, vai ser alterado depois
-        const { name, route } = request.body;
+        const { name, route, dir, content } = request.body;
 
         try {
-            var list = require('./comrades/' + user + '/list.json');
+            await fs.promises.writeFile('./src/controllers/comrades/' + user + '/' + dir + '/' + name + '.js', content);
+
+            var list = require('./routes.json');
+            list[name] = route;
+
+            var json_content = JSON.stringify(list);
+
+            fs.writeFile('./src/controllers/routes.json', json_content, 'utf8', (err) => {
+                if(err) return console.log(err);
+            });
+            //console.log(createDir(user, dir));
         } catch (err) {
-            if(err.code == 'MODULE_NOT_FOUND'){
-                fs.mkdir('./src/controllers/comrades/' + user, (err) => {
-                    if(err) return console.log(err);
-                    console.log("Vai de novo!");
-                });
-                var list = {};
-            }else{
-                console.log(err);
+            if(err.code == 'ENOENT'){
+                await fs.promises.mkdir('./src/controllers/comrades/' + user + '/' + dir);
+                await this.insertContribution(request, response);
             }
         }
-        list[name] = route;
-
-        var json_content = JSON.stringify(list);
-        //console.log(list["TestController"]);
-
-        fs.writeFile('./src/controllers/comrades/' + user + '/list.json', json_content, 'utf8', (err) => {
-            if(err) return console.log(err);
-            console.log('Deu bom');
-        });
 
         return response.status(204).send();
     }
